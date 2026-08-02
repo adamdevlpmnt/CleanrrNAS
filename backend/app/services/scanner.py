@@ -109,10 +109,16 @@ class ScannerService:
             # Using DOWNLOADS_PATH only avoids redundant scanning of library dirs
             logger.info(f"[Scan {session_id}] Building inode map for: {[self.settings.DOWNLOADS_PATH]} (extensions: {exts})")
             logger.info(f"[Scan {session_id}] Library dirs (will also be scanned for cross-links): {library_dirs}")
-            inode_map = hl_svc.build_inode_map([self.settings.DOWNLOADS_PATH] + library_dirs, exts)
+            
+            def _inode_progress(mapped_count: int, file_path: str):
+                import os
+                percent = min(40.0 + (mapped_count / 500.0), 58.0)
+                self._update_progress(session_id, "running", percent, mapped_count, f"Mappage: {os.path.basename(file_path)}")
+                
+            inode_map = hl_svc.build_inode_map([self.settings.DOWNLOADS_PATH] + library_dirs, exts, progress_callback=_inode_progress)
             logger.info(f"[Scan {session_id}] Inode map built with {len(inode_map)} unique inodes")
             
-            self._update_progress(session_id, "running", 60.0, 0, "Scanning download files...")
+            self._update_progress(session_id, "running", 60.0, 0, "Scan des fichiers...")
             logger.info(f"[Scan {session_id}] Starting file scan in {self.settings.DOWNLOADS_PATH} (excluding {library_dirs})...")
             
             total_size = 0
@@ -128,7 +134,7 @@ class ScannerService:
             count = 0
             for stats in file_gen:
                 count += 1
-                if count % 10 == 0:
+                if count == 1 or count % 5 == 0:
                     self._update_progress(session_id, "running", min(60.0 + (count * 0.1), 95.0), count, stats.name)
                 
                 classification = analyzer.classify_file(stats, library_inodes, set(library_dirs), seeding_paths, inode_map, library_file_info)

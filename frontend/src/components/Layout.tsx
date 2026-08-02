@@ -48,7 +48,7 @@ export function Layout() {
         </nav>
         
         <div className="p-4 border-t border-[var(--border)] text-xs text-muted text-center">
-          v1.0.0
+          v1.0.1
         </div>
       </aside>
 

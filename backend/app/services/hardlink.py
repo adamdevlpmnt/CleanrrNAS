@@ -5,8 +5,9 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 class HardlinkAnalyzer:
-    def build_inode_map(self, directories: List[str], extensions: List[str]) -> Dict[Tuple[int, int], List[str]]:
+    def build_inode_map(self, directories: List[str], extensions: List[str], progress_callback=None) -> Dict[Tuple[int, int], List[str]]:
         inode_map: Dict[Tuple[int, int], List[str]] = {}
+        count = 0
         for directory in directories:
             for root, _, files in os.walk(directory):
                 for file in files:
@@ -15,6 +16,9 @@ class HardlinkAnalyzer:
                         file_path = os.path.join(root, file)
                         if os.path.islink(file_path):
                             continue
+                        count += 1
+                        if count % 10 == 0 and progress_callback:
+                            progress_callback(count, file_path)
                         try:
                             st = os.stat(file_path)
                             key = (st.st_dev, st.st_ino)
