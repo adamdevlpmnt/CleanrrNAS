@@ -1,4 +1,3 @@
-import React from 'react';
 import { ScannedFile } from '../types';
 import { StatusBadge } from './StatusBadge';
 import { formatBytes } from '../utils/format';
@@ -71,7 +70,6 @@ export function FileTable({
         </thead>
         <tbody>
           {files.map(file => {
-            const isOrphan = file.status.startsWith('ORPHAN');
             const canDelete = file.status === 'ORPHAN_SAFE';
             
             return (

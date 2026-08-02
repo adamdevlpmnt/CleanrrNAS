@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { ConnectionStatus } from '../types';
 import { ConnectionDot } from '../components/ConnectionDot';

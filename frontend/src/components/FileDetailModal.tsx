@@ -1,8 +1,7 @@
-import React from 'react';
 import { ScannedFile } from '../types';
 import { formatBytes, formatDuration, formatDate } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
-import { X, HardDrive, Link as LinkIcon, Film, Activity } from 'lucide-react';
+import { X, HardDrive, Link as LinkIcon, Film, Activity, Library, CheckCircle } from 'lucide-react';
 
 interface Props {
   file: ScannedFile;
@@ -11,6 +10,8 @@ interface Props {
 
 export function FileDetailModal({ file, onClose }: Props) {
   const linkedPaths = file.linked_paths ? JSON.parse(file.linked_paths) : [];
+  const isOrphan = file.status.startsWith('ORPHAN');
+  const hasLibraryMatch = isOrphan && file.media_title && file.quality_info;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -31,6 +32,55 @@ export function FileDetailModal({ file, onClose }: Props) {
             </div>
             <p className="text-sm">{file.status_reason}</p>
           </section>
+
+          {/* Library Match Section - shown for orphans with a detected library release */}
+          {hasLibraryMatch && (
+            <section className="bg-[var(--bg-base)] p-4 rounded-lg border border-[var(--success)] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-[var(--success)]"></div>
+              <div className="flex items-start gap-3 pl-2">
+                <Library size={20} className="text-[var(--success)] mt-0.5 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <h3 className="text-sm font-semibold text-[var(--success)]">
+                    Autre release présente dans la bibliothèque
+                  </h3>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={14} className="text-[var(--success)] shrink-0" />
+                      <span className="text-sm font-medium">{file.media_title}</span>
+                    </div>
+                    <div className="text-xs text-muted pl-5">
+                      {file.quality_info}
+                    </div>
+                    {file.media_type && (
+                      <div className="mt-2">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-hover)] border border-[var(--border)]">
+                          Source : {file.media_type === 'sonarr' ? 'Sonarr' : file.media_type === 'radarr' ? 'Radarr' : file.media_type}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted mt-2 opacity-75">
+                    Ce fichier est un doublon — une autre version est déjà importée dans votre bibliothèque.
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Orphan without library match */}
+          {isOrphan && !hasLibraryMatch && (
+            <section className="bg-[var(--bg-base)] p-4 rounded-lg border border-[var(--warning)]">
+              <div className="flex items-center gap-2">
+                <Activity size={16} className="text-[var(--warning)]" />
+                <span className="text-sm text-[var(--warning)] font-medium">
+                  Aucune correspondance trouvée dans Sonarr/Radarr
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-1">
+                Ce fichier n'a pas pu être associé à un média connu dans vos bibliothèques.
+              </p>
+            </section>
+          )}
 
           {/* Details Grid */}
           <section className="grid grid-cols-2 gap-4">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { DashboardStats, ScanSession } from '../types';
@@ -46,7 +46,7 @@ export function Dashboard() {
     }
   };
 
-  const isScanning = latestScan?.status === 'pending' || latestScan?.status === 'running';
+  const isScanning = latestScan?.status === 'pending' || latestScan?.status === 'running' || latestScan?.status === 'failed';
 
   if (loading) {
     return <div className="flex-1 flex items-center justify-center"><div className="animate-spin text-[var(--primary)]"><Clock size={32} /></div></div>;

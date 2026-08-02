@@ -89,6 +89,23 @@ def get_summary(db: Session = Depends(get_db)):
         res[s[0]] = {"count": s[1], "size": s[2]}
     return res
 
+@router.get("/all-deletable-ids")
+def get_all_deletable_ids(search: Optional[str] = None, db: Session = Depends(get_db)):
+    scanner = get_scanner_service()
+    latest_scan = scanner.get_latest_scan() if scanner else None
+    if not latest_scan:
+        return {"ids": [], "count": 0}
+    
+    query = db.query(ScannedFile.id).filter(
+        ScannedFile.scan_session_id == latest_scan.id,
+        ScannedFile.status == "ORPHAN_SAFE"
+    )
+    if search:
+        query = query.filter(ScannedFile.file_name.ilike(f"%{search}%"))
+    
+    ids = [row[0] for row in query.all()]
+    return {"ids": ids, "count": len(ids)}
+
 @router.get("/{file_id}", response_model=ScannedFileResponse)
 def get_file(file_id: int, db: Session = Depends(get_db)):
     f = db.query(ScannedFile).filter(ScannedFile.id == file_id).first()

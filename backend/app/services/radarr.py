@@ -34,6 +34,27 @@ class RadarrClient:
             logger.error(f"Failed to get Radarr movies: {e}")
             return []
 
+    def get_movies_with_files(self) -> Dict[str, Dict]:
+        """Returns a dict mapping file paths to their movie info."""
+        path_info = {}
+        movies = self.get_movies()
+        for movie in movies:
+            title = movie.get("title", "Unknown")
+            year = movie.get("year", "")
+            if movie.get("hasFile") and "movieFile" in movie:
+                mf = movie["movieFile"]
+                if "path" in mf:
+                    quality = mf.get("quality", {}).get("quality", {}).get("name", "Unknown")
+                    rel_path = mf.get("relativePath", "")
+                    path_info[mf["path"]] = {
+                        "title": f"{title} ({year})" if year else title,
+                        "quality": quality,
+                        "path": mf["path"],
+                        "relativePath": rel_path,
+                        "source": "radarr"
+                    }
+        return path_info
+
     def get_all_library_file_paths(self) -> Set[str]:
         paths = set()
         movies = self.get_movies()

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { FileListResponse, ScannedFile, DeletionPreview } from '../types';
 import { FileTable } from '../components/FileTable';
 import { FileDetailModal } from '../components/FileDetailModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { formatBytes } from '../utils/format';
-import { Search, Filter, Trash2 } from 'lucide-react';
+import { Search, Filter, Trash2, CheckSquare, XSquare, Loader2 } from 'lucide-react';
 
 export function ScanResults() {
   const [data, setData] = useState<FileListResponse | null>(null);
@@ -20,6 +20,7 @@ export function ScanResults() {
   
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectingAll, setSelectingAll] = useState(false);
   
   // Modals
   const [detailFile, setDetailFile] = useState<ScannedFile | null>(null);
@@ -71,6 +72,23 @@ export function ScanResults() {
     }
   };
 
+  // Select ALL orphans across ALL pages
+  const handleSelectAllOrphans = async () => {
+    setSelectingAll(true);
+    try {
+      const result = await api.getAllDeletableIds(search || undefined);
+      setSelectedIds(new Set(result.ids));
+    } catch (e: any) {
+      alert(`Erreur: ${e.message}`);
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
   const handleSort = (col: string) => {
     if (sortBy === col) {
       setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -105,6 +123,9 @@ export function ScanResults() {
       setIsDeleting(false);
     }
   };
+
+  // Count orphan_safe on current page for info
+  const orphanSafeCount = data?.summary?.total_reclaimable ? data.summary.total_count : 0;
 
   return (
     <div className="space-y-6 pb-20">
@@ -168,6 +189,36 @@ export function ScanResults() {
             <option value="PROTECTED">Tous les protégés</option>
           </select>
         </div>
+      </div>
+
+      {/* Bulk Selection Actions */}
+      <div className="flex gap-3 items-center flex-wrap">
+        <button 
+          className="btn btn-outline flex items-center gap-2"
+          onClick={handleSelectAllOrphans}
+          disabled={selectingAll}
+        >
+          {selectingAll ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <CheckSquare size={16} />
+          )}
+          {selectingAll ? 'Chargement...' : 'Tout sélectionner (orphelins supprimables)'}
+        </button>
+        {selectedIds.size > 0 && (
+          <button 
+            className="btn btn-outline flex items-center gap-2"
+            onClick={handleDeselectAll}
+          >
+            <XSquare size={16} />
+            Tout désélectionner ({selectedIds.size})
+          </button>
+        )}
+        {selectedIds.size > 0 && (
+          <span className="text-sm text-muted ml-auto">
+            {selectedIds.size} fichier(s) sélectionné(s) sur toutes les pages
+          </span>
+        )}
       </div>
 
       {/* Table */}

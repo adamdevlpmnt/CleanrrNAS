@@ -1,6 +1,7 @@
 import threading
 import time
 import json
+import traceback
 from datetime import datetime
 from typing import Dict, Optional, Any
 from sqlalchemy.orm import Session
@@ -48,8 +49,10 @@ class ScannerService:
     def _run_scan(self, session_id: int):
         db = self.db_session_factory()
         try:
+            logger.info(f"[Scan {session_id}] Starting scan thread...")
             session = db.query(ScanSession).filter(ScanSession.id == session_id).first()
             if not session:
+                logger.error(f"[Scan {session_id}] Session not found in DB, aborting.")
                 return
                 
             session.status = "running"
@@ -57,33 +60,60 @@ class ScannerService:
             self._update_progress(session_id, "running", 5.0, 0, "Connecting to APIs...")
             
             # API connections
+            logger.info(f"[Scan {session_id}] Connecting to Sonarr: {self.settings.SONARR_URL}")
             sonarr = SonarrClient(self.settings.SONARR_URL, self.settings.SONARR_API_KEY)
+            logger.info(f"[Scan {session_id}] Connecting to Radarr: {self.settings.RADARR_URL}")
             radarr = RadarrClient(self.settings.RADARR_URL, self.settings.RADARR_API_KEY)
+            logger.info(f"[Scan {session_id}] Connecting to qBittorrent: {self.settings.QBITTORRENT_URL}")
             qbit = QBittorrentClient(self.settings.QBITTORRENT_URL, self.settings.QBITTORRENT_USERNAME, self.settings.QBITTORRENT_PASSWORD)
             
             self._update_progress(session_id, "running", 10.0, 0, "Fetching Sonarr/Radarr libraries...")
+            logger.info(f"[Scan {session_id}] Fetching Sonarr library paths...")
             sonarr_paths = sonarr.get_all_library_file_paths()
+            logger.info(f"[Scan {session_id}] Sonarr returned {len(sonarr_paths)} paths")
+            logger.info(f"[Scan {session_id}] Fetching Radarr library paths...")
             radarr_paths = radarr.get_all_library_file_paths()
+            logger.info(f"[Scan {session_id}] Radarr returned {len(radarr_paths)} paths")
             all_lib_paths = sonarr_paths.union(radarr_paths)
             
             self._update_progress(session_id, "running", 20.0, 0, "Fetching qBittorrent seeding paths...")
+            logger.info(f"[Scan {session_id}] Fetching qBittorrent seeding paths (HnR days: {self.settings.HIT_AND_RUN_DAYS})...")
             seeding_paths = qbit.get_active_seeding_paths(min_days=self.settings.HIT_AND_RUN_DAYS)
+            logger.info(f"[Scan {session_id}] qBittorrent returned {len(seeding_paths)} active seeding paths")
+
+            logger.info(f"[Scan {session_id}] Fetching Sonarr series details...")
+            sonarr_file_info = sonarr.get_series_with_files()
+            logger.info(f"[Scan {session_id}] Sonarr file info: {len(sonarr_file_info)} entries")
+
+            logger.info(f"[Scan {session_id}] Fetching Radarr movie details...")
+            radarr_file_info = radarr.get_movies_with_files()
+            logger.info(f"[Scan {session_id}] Radarr file info: {len(radarr_file_info)} entries")
+
+            library_file_info = {**sonarr_file_info, **radarr_file_info}
+
             
             fs_svc = FilesystemService()
             hl_svc = HardlinkAnalyzer()
             analyzer = FileAnalyzer()
             
             self._update_progress(session_id, "running", 30.0, 0, "Building library inodes...")
+            logger.info(f"[Scan {session_id}] Building library inodes from {len(all_lib_paths)} library file paths...")
             library_inodes = hl_svc.get_library_inodes(all_lib_paths)
+            logger.info(f"[Scan {session_id}] Built {len(library_inodes)} unique library inodes")
             
             self._update_progress(session_id, "running", 40.0, 0, "Building download directory inode map...")
             exts = [ext.strip() for ext in self.settings.VIDEO_EXTENSIONS.split(",")]
             library_dirs = [self.settings.SONARR_LIBRARY_PATH, self.settings.RADARR_LIBRARY_PATH]
             
-            # Build map including downloads and libraries to catch cross-links correctly if needed
+            # Build inode map for downloads only (libraries already covered by library_inodes)
+            # Using DOWNLOADS_PATH only avoids redundant scanning of library dirs
+            logger.info(f"[Scan {session_id}] Building inode map for: {[self.settings.DOWNLOADS_PATH]} (extensions: {exts})")
+            logger.info(f"[Scan {session_id}] Library dirs (will also be scanned for cross-links): {library_dirs}")
             inode_map = hl_svc.build_inode_map([self.settings.DOWNLOADS_PATH] + library_dirs, exts)
+            logger.info(f"[Scan {session_id}] Inode map built with {len(inode_map)} unique inodes")
             
             self._update_progress(session_id, "running", 60.0, 0, "Scanning download files...")
+            logger.info(f"[Scan {session_id}] Starting file scan in {self.settings.DOWNLOADS_PATH} (excluding {library_dirs})...")
             
             total_size = 0
             reclaimable_size = 0
@@ -101,7 +131,7 @@ class ScannerService:
                 if count % 10 == 0:
                     self._update_progress(session_id, "running", min(60.0 + (count * 0.1), 95.0), count, stats.name)
                 
-                classification = analyzer.classify_file(stats, library_inodes, set(library_dirs), seeding_paths, inode_map)
+                classification = analyzer.classify_file(stats, library_inodes, set(library_dirs), seeding_paths, inode_map, library_file_info)
                 
                 total_size += stats.size
                 if classification.status.startswith("ORPHAN"):
@@ -125,6 +155,7 @@ class ScannerService:
                     real_space_gain=classification.real_space_gain,
                     media_type=classification.media_type,
                     media_title=classification.media_title,
+                    quality_info=classification.quality_info,
                     torrent_hash=classification.torrent_info.get("hash") if classification.torrent_info else None,
                     torrent_name=classification.torrent_info.get("name") if classification.torrent_info else None,
                     completion_date=datetime.fromtimestamp(classification.torrent_info.get("completion_on")) if classification.torrent_info and classification.torrent_info.get("completion_on", 0) > 0 else None,
@@ -141,6 +172,7 @@ class ScannerService:
                 db.bulk_save_objects(scanned_files_list)
                 db.commit()
                 
+            logger.info(f"[Scan {session_id}] Scan complete: {count} files scanned, {orphan_count} orphans, {protected_count} protected, reclaimable={reclaimable_size}")
             self._update_progress(session_id, "completed", 100.0, count, None)
             
             session.status = "completed"
@@ -153,13 +185,17 @@ class ScannerService:
             db.commit()
             
         except Exception as e:
-            logger.error(f"Scan failed: {e}")
-            session = db.query(ScanSession).filter(ScanSession.id == session_id).first()
-            if session:
-                session.status = "failed"
-                session.error_message = str(e)
-                session.completed_at = datetime.utcnow()
-                db.commit()
+            logger.error(f"[Scan {session_id}] Scan FAILED with exception: {e}")
+            logger.error(f"[Scan {session_id}] Full traceback:\n{traceback.format_exc()}")
+            try:
+                session = db.query(ScanSession).filter(ScanSession.id == session_id).first()
+                if session:
+                    session.status = "failed"
+                    session.error_message = str(e)
+                    session.completed_at = datetime.utcnow()
+                    db.commit()
+            except Exception as db_err:
+                logger.error(f"[Scan {session_id}] Failed to update session status in DB: {db_err}")
             self._update_progress(session_id, "failed", 0.0, 0, str(e))
         finally:
             db.close()
@@ -179,7 +215,7 @@ class ScannerService:
     def get_latest_scan(self) -> Optional[ScanSession]:
         db = self.db_session_factory()
         try:
-            return db.query(ScanSession).filter(ScanSession.status == "completed").order_by(ScanSession.started_at.desc()).first()
+            return db.query(ScanSession).order_by(ScanSession.started_at.desc()).first()
         finally:
             db.close()
 

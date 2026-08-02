@@ -1,4 +1,3 @@
-import React from 'react';
 import { FileStatus } from '../types';
 import { getStatusLabel, getStatusColor } from '../utils/format';
 import { Shield, Trash2, AlertCircle, HelpCircle } from 'lucide-react';

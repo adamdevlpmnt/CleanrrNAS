@@ -34,6 +34,10 @@ export const api = {
   },
   getFileSummary: () => fetchApi<Record<string, { count: number; size: number }>>('/files/summary'),
   getFileDetail: (id: number) => fetchApi<ScannedFile>(`/files/${id}`),
+  getAllDeletableIds: (search?: string) => {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return fetchApi<{ ids: number[]; count: number }>(`/files/all-deletable-ids${query}`);
+  },
 
   // Deletions
   previewDeletion: (ids: number[]) => fetchApi<DeletionPreview>('/deletions/preview', {

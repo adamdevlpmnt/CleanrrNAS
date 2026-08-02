@@ -43,6 +43,37 @@ class SonarrClient:
             logger.error(f"Failed to get Sonarr episode files for series {series_id}: {e}")
             return []
 
+    def get_series_with_files(self) -> Dict[str, Dict]:
+        """Returns a dict mapping file paths to their series/episode info."""
+        import re
+        path_info = {}
+        series_list = self.get_series()
+        for series in series_list:
+            title = series.get("title", "Unknown")
+            ep_files = self.get_episode_files(series["id"])
+            for f in ep_files:
+                if "path" in f:
+                    quality = f.get("quality", {}).get("quality", {}).get("name", "Unknown")
+                    season = f.get("seasonNumber", 0)
+                    rel_path = f.get("relativePath", "")
+                    
+                    # Extract episode info from relativePath (e.g., "S01E05" from filename)
+                    ep_match = re.search(r'(S\d{2}E\d{2}(?:E\d{2})*)', rel_path, re.IGNORECASE)
+                    if ep_match:
+                        ep_str = ep_match.group(1).upper()
+                    else:
+                        ep_str = f"S{season:02d}"
+                    
+                    path_info[f["path"]] = {
+                        "title": title,
+                        "episode": ep_str,
+                        "quality": quality,
+                        "path": f["path"],
+                        "relativePath": rel_path,
+                        "source": "sonarr"
+                    }
+        return path_info
+
     def get_all_library_file_paths(self) -> Set[str]:
         paths = set()
         series_list = self.get_series()

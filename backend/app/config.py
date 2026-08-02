@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     DOWNLOADS_PATH: str = "/data"
     SONARR_LIBRARY_PATH: str = "/data/Series_4K"
     RADARR_LIBRARY_PATH: str = "/data/Film"
-    DATABASE_URL: str = "sqlite:///config/mediacleaner.db"
+    DATABASE_URL: str = "sqlite:////config/mediacleaner.db"
     HIT_AND_RUN_DAYS: int = 7
     VIDEO_EXTENSIONS: str = ".mkv,.mp4,.avi,.ts,.wmv,.m4v,.mov,.flv,.webm"
     LOG_LEVEL: str = "INFO"

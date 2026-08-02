@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DeletionPreview } from '../types';
 import { formatBytes } from '../utils/format';
 import { AlertTriangle, Trash2, X } from 'lucide-react';

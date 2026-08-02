@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Create group and user with specified PUID/PGID
-PUID=${PUID:-568}
-PGID=${PGID:-568}
+# Create group and user with specified PUID/PGID (also accept UID/GID)
+PUID=${PUID:-${UID:-568}}
+PGID=${PGID:-${GID:-568}}
 
 groupadd -g "$PGID" mediacleaner 2>/dev/null || true
 useradd -u "$PUID" -g "$PGID" -d /app -s /bin/bash mediacleaner 2>/dev/null || true
