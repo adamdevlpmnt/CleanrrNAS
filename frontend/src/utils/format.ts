@@ -62,6 +62,7 @@ export function getStatusLabel(status: FileStatus): string {
     PROTECTED_SEEDING: 'Protégé (En Partage)',
     PROTECTED_DOWNLOADING: 'Protégé (En Téléchargement)',
     ORPHAN_SAFE: 'Orphelin (Supprimable)',
+    ORPHAN_PROTECTED: 'Orphelin protégé',
     ORPHAN_NO_GAIN: 'Orphelin (Sans Gain)',
     UNKNOWN: 'Inconnu'
   };
