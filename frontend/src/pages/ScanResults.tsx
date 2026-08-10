@@ -184,8 +184,10 @@ export function ScanResults() {
             }}
           >
             <option value="">Tous les statuts</option>
-            <option value="ORPHAN_SAFE">Orphelins (Supprimables)</option>
-            <option value="ORPHAN_NO_GAIN">Orphelins (Sans gain)</option>
+            <option value="ORPHAN_SAFE">Orphelins supprimables</option>
+            <option value="ORPHAN_PROTECTED">Orphelins protégés</option>
+            <option value="ORPHAN_NO_GAIN">Orphelins (sans gain)</option>
+            <option value="PROTECTED_SEEDING">Hit & Run en cours</option>
             <option value="PROTECTED">Tous les protégés</option>
           </select>
         </div>

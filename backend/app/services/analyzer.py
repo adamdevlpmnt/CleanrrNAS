@@ -14,42 +14,49 @@ class FileClassification:
     quality_info: Optional[str] = None
 
 class FileAnalyzer:
-    def classify_file(self, file_stats: FileStats, library_inodes: Set[Tuple[int, int]], library_paths: Set[str], seeding_paths: Dict[str, Dict], inode_map: Dict[Tuple[int, int], list[str]], library_file_info: Dict[str, Dict] = None) -> FileClassification:
+    def classify_file(self, file_stats: FileStats, library_inodes: Set[Tuple[int, int]], library_dirs: Set[str], seeding_paths: Dict[str, Dict], inode_map: Dict[Tuple[int, int], list[str]], library_file_info: Dict[str, Dict] = None, all_lib_file_paths: Set[str] = None, all_torrent_paths: Dict[str, Dict] = None) -> FileClassification:
         abs_path = os.path.abspath(file_stats.path)
         file_inode = (file_stats.device_id, file_stats.inode)
         
         # 1. Is it inside library paths?
-        if any(abs_path.startswith(os.path.abspath(lib_dir)) for lib_dir in library_paths):
-            return self._build_result("PROTECTED_LIBRARY", "File is located within a media library directory", 0)
+        is_in_library_dir = any(abs_path.startswith(os.path.abspath(lib_dir)) for lib_dir in library_dirs)
+        if is_in_library_dir:
+            if abs_path in (all_lib_file_paths or set()) or file_inode in library_inodes:
+                return self._build_result("PROTECTED_LIBRARY", "Fichier référencé par Sonarr/Radarr dans la bibliothèque", 0)
+            else:
+                return self._build_result("ORPHAN_PROTECTED", "Fichier dans un dossier bibliothèque mais non référencé par Sonarr/Radarr — protégé", 0)
 
         # 2. Is it hardlinked to library?
         if file_inode in library_inodes:
-            return self._build_result("PROTECTED_HARDLINK", "File is hardlinked to a library item", 0)
+            return self._build_result("PROTECTED_HARDLINK", "Fichier lié (hardlink) à un élément de la bibliothèque", 0)
 
         # 3. Is it in active torrents?
         torrent_info = self._match_torrent(abs_path, seeding_paths)
         if torrent_info:
             state = torrent_info.get("state", "")
             if state in ("downloading", "stalledDL", "metaDL"):
-                return self._build_result("PROTECTED_DOWNLOADING", "File is currently downloading in qBittorrent", 0, torrent_info=torrent_info)
+                return self._build_result("PROTECTED_DOWNLOADING", "Fichier en cours de téléchargement dans qBittorrent", 0, torrent_info=torrent_info)
             else:
-                return self._build_result("PROTECTED_SEEDING", "File is recently completed and seeding in qBittorrent", 0, torrent_info=torrent_info)
+                return self._build_result("PROTECTED_SEEDING", "Fichier récemment terminé et en seed dans qBittorrent", 0, torrent_info=torrent_info)
+
+        # try to find it from all_torrent_paths for H&R display purposes
+        torrent_info_display = torrent_info or self._match_torrent(abs_path, all_torrent_paths or {})
 
         # 4. Is it orphan safe or no gain?
         status = "UNKNOWN"
-        reason = "Unable to determine file status confidently"
+        reason = "Impossible de déterminer le statut du fichier avec certitude"
         gain = 0
         
         if file_stats.nlink == 1:
             status = "ORPHAN_SAFE"
-            reason = "File has no other hardlinks and is safe to delete"
+            reason = "Le fichier n'a pas d'autres hardlinks et peut être supprimé en toute sécurité"
             gain = file_stats.size
         else:
             linked_paths = inode_map.get(file_inode, [])
             other_paths = [p for p in linked_paths if p != abs_path]
             if other_paths:
                 status = "ORPHAN_NO_GAIN"
-                reason = f"File has hardlinks elsewhere (e.g. {other_paths[0]}) but not in known libraries"
+                reason = f"Le fichier a des hardlinks ailleurs (ex. {other_paths[0]}) mais pas dans les bibliothèques connues"
                 gain = 0
                 
         if status in ("ORPHAN_SAFE", "ORPHAN_NO_GAIN"):
@@ -68,9 +75,9 @@ class FileAnalyzer:
                     media_type = match.get("source", "")
                     quality_info = f"Release gardée: {quality_kept}"
                     
-            return self._build_result(status, reason, gain, media_type, media_title, torrent_info=None, quality_info=quality_info)
+            return self._build_result(status, reason, gain, media_type, media_title, torrent_info=torrent_info_display, quality_info=quality_info)
 
-        return self._build_result("UNKNOWN", "Unable to determine file status confidently", 0)
+        return self._build_result("UNKNOWN", "Impossible de déterminer le statut du fichier avec certitude", 0)
 
     def _find_library_match(self, file_path: str, library_file_info: Dict[str, Dict]) -> Optional[Dict]:
         """Try to find a matching library entry for an orphan file based on parent directory name."""

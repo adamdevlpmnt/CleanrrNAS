@@ -162,15 +162,28 @@ Pour chaque fichier trouvé dans `/mnt/Downloads` :
 
 #### Classification finale
 Chaque fichier est classé dans une des catégories :
-| Statut | Signification | Action |
-|--------|--------------|--------|
-| `PROTECTED_LIBRARY` | Fichier utilisé par Sonarr/Radarr (lien actif) | Aucune suppression |
-| `PROTECTED_HARDLINK` | Fichier lié par hardlink à un média en bibliothèque | Aucune suppression |
-| `PROTECTED_SEEDING` | Torrent encore en seed (< 7 jours) | Attendre |
-| `PROTECTED_DOWNLOADING` | Torrent encore en téléchargement | Attendre |
-| `ORPHAN_SAFE` | Release orpheline, suppression sans risque, gain réel | Candidate |
-| `ORPHAN_NO_GAIN` | Release orpheline mais hardlink actif — gain nul | Signaler |
-| `UNKNOWN` | Fichier non identifiable par les API | Signaler |
+| Statut | Signification | Supprimable ? |
+|--------|--------------|:---:|
+| `PROTECTED_LIBRARY` | Fichier référencé par l'API Sonarr/Radarr | ❌ |
+| `PROTECTED_HARDLINK` | Fichier lié par hardlink à un média en bibliothèque | ❌ |
+| `PROTECTED_SEEDING` | Torrent encore en seed (< durée H&R configurée) | ❌ |
+| `PROTECTED_DOWNLOADING` | Torrent encore en téléchargement | ❌ |
+| `ORPHAN_PROTECTED` | **Dans un dossier bibliothèque Sonarr/Radarr mais non référencé par l'API** — protégé automatiquement | ❌ |
+| `ORPHAN_SAFE` | Release orpheline, suppression sans risque, gain réel | ✅ |
+| `ORPHAN_NO_GAIN` | Release orpheline mais hardlink actif — gain nul | ⚠️ |
+| `UNKNOWN` | Fichier non identifiable par les API | ⚠️ |
+
+#### Sécurité multi-couche
+- **Couche 1** : Classification — seuls les `ORPHAN_SAFE` sont marqués supprimables
+- **Couche 2** : Garde-fou dans le service de suppression — refus catégorique si le chemin est dans un dossier bibliothèque
+- **Couche 3** : Vérification du statut — refus si le statut n'est pas `ORPHAN_SAFE` ou `ORPHAN_NO_GAIN`
+- **Couche 4** : Confirmation utilisateur — saisie de "SUPPRIMER" obligatoire
+
+#### Hit & Run
+- Le temps de seed de chaque torrent est enregistré dans `seeding_time_seconds`
+- La durée H&R configurée est stockée dans `hit_and_run_days` pour chaque fichier scanné
+- L'interface affiche "⏳ Xj Xh / Yj" pour les H&R en cours et "✅ Xj Xh / Yj" pour les H&R terminés
+- Un filtre dédié permet de voir uniquement les fichiers en Hit & Run
 
 ### 3.4 Architecture de la base de données
 
@@ -334,10 +347,14 @@ mediacleaner/
 - [ ] Documentation
 
 ### Phase 2 — Améliorations (post-validation)
+- [x] Support multi-dossiers de bibliothèque (v1.1.0)
+- [x] Protection automatique des fichiers dans les dossiers bibliothèque (v1.1.0)
+- [x] Filtre orphelins protégés (v1.1.0)
+- [x] Colonne et filtre Hit & Run avec durée d'upload (v1.1.0)
+- [x] Garde-fou multi-couche dans le service de suppression (v1.1.0)
 - [ ] Scans programmés (cron-like via APScheduler)
 - [ ] Notifications (webhooks, Discord, email)
 - [ ] Statistiques et graphiques d'espace récupéré
-- [ ] Support multi-dossiers de téléchargement
 - [ ] Filtres avancés dans l'interface
 - [ ] Export CSV des résultats
 
@@ -348,3 +365,13 @@ mediacleaner/
 - [ ] API publique documentée (OpenAPI/Swagger)
 - [ ] Support Prowlarr pour enrichir les métadonnées
 - [ ] Multi-utilisateurs avec authentification
+
+---
+
+## 6. Historique des versions
+
+| Version | Date | Changements |
+|---------|------|-------------|
+| v1.0.0 | 2026-08-02 | Version initiale — scan, classification, suppression |
+| v1.0.1 | 2026-08-03 | Progression temps réel du scan (mappage inode) |
+| v1.1.0 | 2026-08-10 | Multi-path Sonarr/Radarr, ORPHAN_PROTECTED, colonne H&R, filtres avancés, garde-fou suppression |

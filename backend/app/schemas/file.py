@@ -21,6 +21,7 @@ class ScannedFileResponse(BaseModel):
     torrent_name: Optional[str]
     completion_date: Optional[datetime]
     seeding_time_seconds: Optional[int]
+    hit_and_run_days: Optional[int]
     linked_paths: Optional[str]
     created_at: datetime
 

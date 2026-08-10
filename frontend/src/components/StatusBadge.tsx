@@ -8,10 +8,16 @@ interface Props {
 }
 
 export function StatusBadge({ status, size = 'md' }: Props) {
-  const colors = getStatusColor(status);
-  const label = getStatusLabel(status);
+  let colors = getStatusColor(status);
+  let label = getStatusLabel(status);
+  
+  if (status === 'ORPHAN_PROTECTED') {
+    colors = { bg: 'rgba(245, 158, 11, 0.2)', text: '#f59e0b' }; // amber
+    label = 'Orphelin protégé';
+  }
   
   const Icon = status.startsWith('PROTECTED') ? Shield :
+               status === 'ORPHAN_PROTECTED' ? Shield :
                status === 'ORPHAN_SAFE' ? Trash2 :
                status === 'ORPHAN_NO_GAIN' ? AlertCircle : HelpCircle;
                

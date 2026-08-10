@@ -81,6 +81,10 @@ class ScannerService:
             seeding_paths = qbit.get_active_seeding_paths(min_days=self.settings.HIT_AND_RUN_DAYS)
             logger.info(f"[Scan {session_id}] qBittorrent returned {len(seeding_paths)} active seeding paths")
 
+            logger.info(f"[Scan {session_id}] Fetching all qBittorrent torrents...")
+            all_torrent_paths = qbit.get_all_torrent_paths()
+            logger.info(f"[Scan {session_id}] qBittorrent returned {len(all_torrent_paths)} total torrent paths")
+
             logger.info(f"[Scan {session_id}] Fetching Sonarr series details...")
             sonarr_file_info = sonarr.get_series_with_files()
             logger.info(f"[Scan {session_id}] Sonarr file info: {len(sonarr_file_info)} entries")
@@ -103,7 +107,7 @@ class ScannerService:
             
             self._update_progress(session_id, "running", 40.0, 0, "Building download directory inode map...")
             exts = [ext.strip() for ext in self.settings.VIDEO_EXTENSIONS.split(",")]
-            library_dirs = [self.settings.SONARR_LIBRARY_PATH, self.settings.RADARR_LIBRARY_PATH]
+            library_dirs = self.settings.get_library_paths()
             
             # Build inode map for downloads only (libraries already covered by library_inodes)
             # Using DOWNLOADS_PATH only avoids redundant scanning of library dirs
@@ -119,7 +123,7 @@ class ScannerService:
             logger.info(f"[Scan {session_id}] Inode map built with {len(inode_map)} unique inodes")
             
             self._update_progress(session_id, "running", 60.0, 0, "Scan des fichiers...")
-            logger.info(f"[Scan {session_id}] Starting file scan in {self.settings.DOWNLOADS_PATH} (excluding {library_dirs})...")
+            logger.info(f"[Scan {session_id}] Starting file scan in {self.settings.DOWNLOADS_PATH}...")
             
             total_size = 0
             reclaimable_size = 0
@@ -127,8 +131,8 @@ class ScannerService:
             protected_count = 0
             scanned_files_list = []
             
-            # Scan downloads directory, excluding the library directories
-            file_gen = fs_svc.scan_video_files(self.settings.DOWNLOADS_PATH, exts, exclude_dirs=library_dirs)
+            # Scan downloads directory, excluding the library directories (now no longer excluded so we scan everything)
+            file_gen = fs_svc.scan_video_files(self.settings.DOWNLOADS_PATH, exts)
             
             # Since generator doesn't have length, we just increment counter
             count = 0
@@ -137,7 +141,10 @@ class ScannerService:
                 if count == 1 or count % 5 == 0:
                     self._update_progress(session_id, "running", min(60.0 + (count * 0.1), 95.0), count, stats.name)
                 
-                classification = analyzer.classify_file(stats, library_inodes, set(library_dirs), seeding_paths, inode_map, library_file_info)
+                classification = analyzer.classify_file(
+                    stats, library_inodes, set(library_dirs), seeding_paths, inode_map, 
+                    library_file_info, all_lib_file_paths=all_lib_paths, all_torrent_paths=all_torrent_paths
+                )
                 
                 total_size += stats.size
                 if classification.status.startswith("ORPHAN"):
@@ -165,6 +172,8 @@ class ScannerService:
                     torrent_hash=classification.torrent_info.get("hash") if classification.torrent_info else None,
                     torrent_name=classification.torrent_info.get("name") if classification.torrent_info else None,
                     completion_date=datetime.fromtimestamp(classification.torrent_info.get("completion_on")) if classification.torrent_info and classification.torrent_info.get("completion_on", 0) > 0 else None,
+                    seeding_time_seconds=classification.torrent_info.get("seeding_time") if classification.torrent_info else None,
+                    hit_and_run_days=self.settings.HIT_AND_RUN_DAYS,
                     linked_paths=json.dumps(linked_paths)
                 )
                 scanned_files_list.append(scanned_file)

@@ -33,7 +33,12 @@ def list_files(
     query = db.query(ScannedFile).filter(ScannedFile.scan_session_id == scan_id)
     
     if status:
-        query = query.filter(ScannedFile.status == status)
+        if status.startswith("PROTECTED"):
+            query = query.filter(ScannedFile.status.like("PROTECTED%")) if status == "PROTECTED" else query.filter(ScannedFile.status == status)
+        elif status.startswith("ORPHAN"):
+            query = query.filter(ScannedFile.status.like("ORPHAN%")) if status == "ORPHAN" else query.filter(ScannedFile.status == status)
+        else:
+            query = query.filter(ScannedFile.status == status)
     if media_type:
         query = query.filter(ScannedFile.media_type == media_type)
     if search:
@@ -43,13 +48,25 @@ def list_files(
     total_count = query.count()
     
     total_size = db.query(func.sum(ScannedFile.file_size)).filter(ScannedFile.scan_session_id == scan_id)
-    if status: total_size = total_size.filter(ScannedFile.status == status)
+    if status:
+        if status.startswith("PROTECTED"):
+            total_size = total_size.filter(ScannedFile.status.like("PROTECTED%")) if status == "PROTECTED" else total_size.filter(ScannedFile.status == status)
+        elif status.startswith("ORPHAN"):
+            total_size = total_size.filter(ScannedFile.status.like("ORPHAN%")) if status == "ORPHAN" else total_size.filter(ScannedFile.status == status)
+        else:
+            total_size = total_size.filter(ScannedFile.status == status)
     if media_type: total_size = total_size.filter(ScannedFile.media_type == media_type)
     if search: total_size = total_size.filter(ScannedFile.file_name.ilike(f"%{search}%"))
     ts_val = total_size.scalar() or 0
     
     total_rec = db.query(func.sum(ScannedFile.real_space_gain)).filter(ScannedFile.scan_session_id == scan_id)
-    if status: total_rec = total_rec.filter(ScannedFile.status == status)
+    if status:
+        if status.startswith("PROTECTED"):
+            total_rec = total_rec.filter(ScannedFile.status.like("PROTECTED%")) if status == "PROTECTED" else total_rec.filter(ScannedFile.status == status)
+        elif status.startswith("ORPHAN"):
+            total_rec = total_rec.filter(ScannedFile.status.like("ORPHAN%")) if status == "ORPHAN" else total_rec.filter(ScannedFile.status == status)
+        else:
+            total_rec = total_rec.filter(ScannedFile.status == status)
     if media_type: total_rec = total_rec.filter(ScannedFile.media_type == media_type)
     if search: total_rec = total_rec.filter(ScannedFile.file_name.ilike(f"%{search}%"))
     tr_val = total_rec.scalar() or 0

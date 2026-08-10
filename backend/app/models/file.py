@@ -23,5 +23,6 @@ class ScannedFile(Base):
     torrent_name = Column(String, nullable=True)
     completion_date = Column(DateTime, nullable=True)
     seeding_time_seconds = Column(Integer, nullable=True)
+    hit_and_run_days = Column(Integer, nullable=True)
     linked_paths = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

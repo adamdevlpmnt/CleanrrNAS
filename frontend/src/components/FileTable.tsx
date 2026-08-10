@@ -14,6 +14,22 @@ interface Props {
   onSort?: (col: string) => void;
 }
 
+const formatHitAndRun = (seedingSeconds: number | null, hnrDays: number | null) => {
+  if (seedingSeconds === null || hnrDays === null) return "—";
+  
+  const requiredSeconds = hnrDays * 86400;
+  const seedingDays = Math.floor(seedingSeconds / 86400);
+  const seedingHours = Math.floor((seedingSeconds % 86400) / 3600);
+  const formattedSeeding = `${seedingDays}j ${seedingHours}h`;
+  const formattedRequired = `${hnrDays}j`;
+  
+  if (seedingSeconds < requiredSeconds) {
+    return <span className="text-[var(--warning)]" title="Hit & Run en cours">⏳ {formattedSeeding} / {formattedRequired}</span>;
+  }
+  return <span className="text-[var(--success)]" title="Hit & Run terminé">✅ {formattedSeeding} / {formattedRequired}</span>;
+};
+
+
 export function FileTable({ 
   files, selectedIds, onSelect, onSelectAll, onViewDetail, sortBy, sortDir, onSort 
 }: Props) {
@@ -64,6 +80,7 @@ export function FileTable({
             <th className="cursor-pointer hover:text-white" onClick={() => handleHeaderClick('status')}>
               Statut <SortIcon col="status" />
             </th>
+            <th>Hit & Run</th>
             <th>Gain Réel</th>
             <th className="text-right">Actions</th>
           </tr>
@@ -93,6 +110,7 @@ export function FileTable({
                 </td>
                 <td className="whitespace-nowrap">{formatBytes(file.file_size)}</td>
                 <td><StatusBadge status={file.status} size="sm" /></td>
+                <td className="whitespace-nowrap">{formatHitAndRun(file.seeding_time_seconds, file.hit_and_run_days)}</td>
                 <td className={`whitespace-nowrap ${file.real_space_gain > 0 ? 'text-success' : 'text-muted'}`}>
                   {formatBytes(file.real_space_gain)}
                 </td>

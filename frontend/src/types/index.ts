@@ -19,7 +19,7 @@ export interface ScanProgress {
   current_file: string | null;
 }
 
-export type FileStatus = 'PROTECTED_LIBRARY' | 'PROTECTED_HARDLINK' | 'PROTECTED_SEEDING' | 'PROTECTED_DOWNLOADING' | 'ORPHAN_SAFE' | 'ORPHAN_NO_GAIN' | 'UNKNOWN';
+export type FileStatus = 'PROTECTED_LIBRARY' | 'PROTECTED_HARDLINK' | 'PROTECTED_SEEDING' | 'PROTECTED_DOWNLOADING' | 'ORPHAN_SAFE' | 'ORPHAN_PROTECTED' | 'ORPHAN_NO_GAIN' | 'UNKNOWN';
 
 export interface ScannedFile {
   id: number;
@@ -40,6 +40,7 @@ export interface ScannedFile {
   torrent_name: string | null;
   completion_date: string | null;
   seeding_time_seconds: number | null;
+  hit_and_run_days: number | null;
   linked_paths: string | null;
   created_at: string;
 }

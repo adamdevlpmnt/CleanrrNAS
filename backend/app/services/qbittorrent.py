@@ -99,6 +99,24 @@ class QBittorrentClient:
                     seeding_paths[content_path] = t
         return seeding_paths
 
+    def get_all_torrent_paths(self) -> Dict[str, Dict]:
+        torrents = self.get_torrents()
+        all_paths = {}
+        for t in torrents:
+            content_path = t.get("content_path")
+            if content_path:
+                all_paths[content_path] = {
+                    "hash": t.get("hash"),
+                    "name": t.get("name"),
+                    "state": t.get("state"),
+                    "completion_on": t.get("completion_on"),
+                    "seeding_time": t.get("seeding_time"),
+                    "ratio": t.get("ratio"),
+                    "save_path": t.get("save_path"),
+                    "content_path": content_path
+                }
+        return all_paths
+
     def delete_torrent(self, torrent_hash: str, delete_files: bool = False):
         if not self._ensure_auth():
             return

@@ -20,8 +20,9 @@ services:
       - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
       - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
       - DOWNLOADS_PATH=/data
-      - SONARR_LIBRARY_PATH=/data/Series_4K
-      - RADARR_LIBRARY_PATH=/data/Film
+      # Paths multiples séparés par des virgules
+      - SONARR_LIBRARY_PATHS=/data/Series_4K
+      - RADARR_LIBRARY_PATHS=/data/Film
       - HIT_AND_RUN_DAYS=${HIT_AND_RUN_DAYS:-7}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
