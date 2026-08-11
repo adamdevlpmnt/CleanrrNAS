@@ -375,3 +375,4 @@ mediacleaner/
 | v1.0.0 | 2026-08-02 | Version initiale — scan, classification, suppression |
 | v1.0.1 | 2026-08-03 | Progression temps réel du scan (mappage inode) |
 | v1.1.0 | 2026-08-10 | Multi-path Sonarr/Radarr, ORPHAN_PROTECTED, colonne H&R, filtres avancés, garde-fou suppression |
+| v1.1.1 | 2026-08-11 | Correction des doublons en excluant les répertoires bibliothèques du scan principal. Message hardlink corrigé. |
