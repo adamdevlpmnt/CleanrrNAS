@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     VIDEO_EXTENSIONS: str = ".mkv,.mp4,.avi,.ts,.wmv,.m4v,.mov,.flv,.webm"
     LOG_LEVEL: str = "INFO"
     APP_PORT: int = 9876
+    QBITTORRENT_PATH_MAPPING: str = ""
+
+    def get_qbittorrent_path_mapping(self) -> dict[str, str]:
+        mapping = {}
+        if self.QBITTORRENT_PATH_MAPPING:
+            parts = self.QBITTORRENT_PATH_MAPPING.split(",")
+            for part in parts:
+                if ":" in part:
+                    src, dst = part.split(":", 1)
+                    mapping[src.strip()] = dst.strip()
+        return mapping
 
     def get_sonarr_library_paths(self) -> list[str]:
         return [p.strip() for p in self.SONARR_LIBRARY_PATHS.split(",") if p.strip()]
