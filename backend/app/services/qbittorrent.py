@@ -80,7 +80,18 @@ class QBittorrentClient:
             logger.error(f"Failed to get files for torrent {torrent_hash}: {e}")
             return []
 
-    def get_active_seeding_paths(self, min_days: int = 7) -> Dict[str, Dict]:
+    def _apply_mapping(self, path: str, mapping: Optional[Dict[str, str]]) -> str:
+        if not mapping or not path:
+            return path
+        # Normalize slashes for comparison
+        norm_path = path.replace('\\', '/')
+        for src, dst in mapping.items():
+            norm_src = src.replace('\\', '/')
+            if norm_path.startswith(norm_src):
+                return norm_path.replace(norm_src, dst.replace('\\', '/'), 1)
+        return path
+
+    def get_active_seeding_paths(self, min_days: int = 7, path_mapping: Optional[Dict[str, str]] = None) -> Dict[str, Dict]:
         torrents = self.get_torrents()
         seeding_paths = {}
         now = time.time()
@@ -96,24 +107,27 @@ class QBittorrentClient:
             if is_active:
                 content_path = t.get("content_path")
                 if content_path:
-                    seeding_paths[content_path] = t
+                    mapped_path = self._apply_mapping(content_path, path_mapping)
+                    seeding_paths[mapped_path] = t
         return seeding_paths
 
-    def get_all_torrent_paths(self) -> Dict[str, Dict]:
+    def get_all_torrent_paths(self, path_mapping: Optional[Dict[str, str]] = None) -> Dict[str, Dict]:
         torrents = self.get_torrents()
         all_paths = {}
         for t in torrents:
             content_path = t.get("content_path")
             if content_path:
-                all_paths[content_path] = {
+                mapped_path = self._apply_mapping(content_path, path_mapping)
+                all_paths[mapped_path] = {
                     "hash": t.get("hash"),
                     "name": t.get("name"),
                     "state": t.get("state"),
                     "completion_on": t.get("completion_on"),
                     "seeding_time": t.get("seeding_time"),
                     "ratio": t.get("ratio"),
-                    "save_path": t.get("save_path"),
-                    "content_path": content_path
+                    "save_path": self._apply_mapping(t.get("save_path", ""), path_mapping) if t.get("save_path") else "",
+                    "content_path": mapped_path,
+                    "original_content_path": content_path
                 }
         return all_paths
 
