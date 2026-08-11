@@ -78,11 +78,12 @@ class ScannerService:
             
             self._update_progress(session_id, "running", 20.0, 0, "Fetching qBittorrent seeding paths...")
             logger.info(f"[Scan {session_id}] Fetching qBittorrent seeding paths (HnR days: {self.settings.HIT_AND_RUN_DAYS})...")
-            seeding_paths = qbit.get_active_seeding_paths(min_days=self.settings.HIT_AND_RUN_DAYS)
+            qbit_mapping = self.settings.get_qbittorrent_path_mapping()
+            seeding_paths = qbit.get_active_seeding_paths(min_days=self.settings.HIT_AND_RUN_DAYS, path_mapping=qbit_mapping)
             logger.info(f"[Scan {session_id}] qBittorrent returned {len(seeding_paths)} active seeding paths")
 
             logger.info(f"[Scan {session_id}] Fetching all qBittorrent torrents...")
-            all_torrent_paths = qbit.get_all_torrent_paths()
+            all_torrent_paths = qbit.get_all_torrent_paths(path_mapping=qbit_mapping)
             logger.info(f"[Scan {session_id}] qBittorrent returned {len(all_torrent_paths)} total torrent paths")
 
             logger.info(f"[Scan {session_id}] Fetching Sonarr series details...")
