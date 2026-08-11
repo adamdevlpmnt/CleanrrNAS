@@ -132,8 +132,8 @@ class ScannerService:
             protected_count = 0
             scanned_files_list = []
             
-            # Scan downloads directory, excluding the library directories (now no longer excluded so we scan everything)
-            file_gen = fs_svc.scan_video_files(self.settings.DOWNLOADS_PATH, exts)
+            # Scan downloads directory, excluding the library directories to prevent duplicates and library clutter
+            file_gen = fs_svc.scan_video_files(self.settings.DOWNLOADS_PATH, exts, exclude_dirs=library_dirs)
             
             # Since generator doesn't have length, we just increment counter
             count = 0

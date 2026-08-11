@@ -56,7 +56,7 @@ class FileAnalyzer:
             other_paths = [p for p in linked_paths if p != abs_path]
             if other_paths:
                 status = "ORPHAN_NO_GAIN"
-                reason = f"Le fichier a des hardlinks ailleurs (ex. {other_paths[0]}) mais pas dans les bibliothèques connues"
+                reason = f"Le fichier a des hardlinks ailleurs (ex. {other_paths[0]}). La suppression ne libérera aucun espace"
                 gain = 0
                 
         if status in ("ORPHAN_SAFE", "ORPHAN_NO_GAIN"):
